@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: abzamusic
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # - key: ConnectionStrings__DefaultConnection
+      #   sync: false
