@@ -1,10 +1,8 @@
 <template>
-  <q-toolbar class="q-mb-md rounded-borders bg-grey-2 text-dark">
-    <q-toolbar-title class="text-subtitle1">Пользователи</q-toolbar-title>
+  <q-toolbar class="full-width q-px-none bg-transparent">
+    <q-toolbar-title class="text-h6">Треки</q-toolbar-title>
 
     <q-space />
-
-    <span class="q-mr-sm text-caption text-grey-7">Режим отображения</span>
     <q-btn-toggle
       v-model="enableVirtualScroll"
       no-caps

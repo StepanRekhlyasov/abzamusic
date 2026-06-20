@@ -1,15 +1,17 @@
 <template>
-  <q-page padding>
-    <Toolbar v-model="enableVirtualScroll" />
-    <Table :enable-virtual-scroll="enableVirtualScroll" />
+  <q-page padding class="tracks-page column no-wrap">
+    <Table class="col" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-
 import Table from '@/components/Table.vue';
-import Toolbar from '@/components/Toolbar.vue';
-
-const enableVirtualScroll = ref(false);
 </script>
+
+<style scoped lang="scss">
+.tracks-page {
+  height: calc(100vh - var(--app-header-height, 50px));
+  max-height: calc(100vh - var(--app-header-height, 50px));
+  overflow: hidden;
+}
+</style>
