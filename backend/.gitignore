@@ -1,0 +1,16 @@
+I use the following .gitignore for C# projects. Additional patterns are added as and when they are needed.
+
+[Oo]bj
+[Bb]in
+.vs/
+*.user
+*.suo
+*.[Cc]ache
+*.bak
+*.ncb
+*.log 
+*.DS_Store
+[Tt]humbs.db 
+_ReSharper.*
+*.resharper
+Ankh.NoLoad
