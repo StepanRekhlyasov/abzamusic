@@ -1,17 +1,16 @@
-version: '3.8'
-
 services:
   backend:
     build:
-      context: ./backend
-      target: ${APP_MODE:-dev-stage}
+      context: .
+      dockerfile: Dockerfile
+      target: ${BACKEND_TARGET:-backend-dev-stage}
     develop:
-      watch: 
-      - action: rebuild
-        path: ./backend
-        ignore:
-          - ./backend/obj/
-          - ./backend/bin/
+      watch:
+        - action: rebuild
+          path: ./backend
+          ignore:
+            - ./backend/obj/
+            - ./backend/bin/
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
@@ -21,7 +20,9 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: Dockerfile
+      target: ${FRONTEND_TARGET:-frontend-production-stage}
     develop:
       watch:
         - path: ./frontend/src
@@ -30,8 +31,8 @@ services:
         - path: ./frontend/package.json
           target: /app/package.json
           action: restart
-        - path: ./frontend/vite.config.ts
-          target: /app/vite.config.ts
+        - path: ./frontend/quasar.config.ts
+          target: /app/quasar.config.ts
           action: restart
     ports:
       - "8000:80"
