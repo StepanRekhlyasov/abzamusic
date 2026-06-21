@@ -31,7 +31,7 @@ RUN npm run build
 
 FROM frontend-base AS frontend-dev-stage
 EXPOSE 80
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "80"]
+CMD ["npm", "run", "dev", "--", "-H", "0.0.0.0", "-p", "80"]
 
 FROM nginx:stable-alpine AS frontend-production-stage
 COPY --from=frontend-build /app/dist/spa /usr/share/nginx/html

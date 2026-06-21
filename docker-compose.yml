@@ -22,18 +22,26 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: ${FRONTEND_TARGET:-frontend-production-stage}
+      target: ${FRONTEND_TARGET:-frontend-dev-stage}
     develop:
       watch:
-        - path: ./frontend/src
-          target: /app/src
+        - path: ./frontend
+          target: /app
           action: sync
+          ignore:
+            - ./frontend/node_modules/
+            - ./frontend/dist/
+            - ./frontend/.quasar/
         - path: ./frontend/package.json
           target: /app/package.json
-          action: restart
+          action: sync+restart
         - path: ./frontend/quasar.config.ts
           target: /app/quasar.config.ts
-          action: restart
+          action: sync+restart
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - HMR_CLIENT_PORT=8000
+      - API_PROXY_TARGET=http://backend:8080
     ports:
       - "8000:80"
     depends_on:

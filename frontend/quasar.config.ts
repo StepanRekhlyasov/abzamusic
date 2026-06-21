@@ -95,8 +95,14 @@ export default defineConfig((ctx) => {
     devServer: {
       port: 8000,
       // https: true,
-      open: true, // opens browser window automatically
+      open: process.env.CHOKIDAR_USEPOLLING !== 'true',
       allowedHosts: ['abzabza.ru'],
+      proxy: {
+        '/api': {
+          target: process.env.API_PROXY_TARGET ?? 'http://localhost:8080',
+          changeOrigin: true,
+        },
+      },
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework

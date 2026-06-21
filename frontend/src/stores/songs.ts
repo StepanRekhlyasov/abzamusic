@@ -1,0 +1,159 @@
+import { defineStore } from 'pinia';
+import { computed, ref, watch } from 'vue';
+
+import type { GenerateSongsParams, Song, SongsPageResponse } from '@/api/songs';
+
+type TablePagination = {
+  page: number;
+  rowsPerPage: number;
+  rowsNumber?: number;
+  sortBy: string;
+  descending: boolean;
+};
+
+async function fetchSongs(params: GenerateSongsParams): Promise<SongsPageResponse> {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    seed: params.seed,
+    likes: params.likes.toFixed(1),
+    size: String(params.size),
+  });
+
+  const response = await fetch(`/api/generate/songs?${query.toString()}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to load songs: ${response.status}`);
+  }
+
+  return response.json() as Promise<SongsPageResponse>;
+}
+
+export const useSongsStore = defineStore('songs', () => {
+  const enableVirtualScroll = ref(false);
+  const pageSize = ref(10);
+  const seed = ref('12345678');
+  const likes = ref(5.0);
+  const loading = ref(false);
+  const totalPages = ref(1);
+  const loadedPages = ref(0);
+  const rowsByPage = ref<Song[][]>([]);
+  let requestId = 0;
+
+  const pagination = ref<TablePagination>({
+    page: 1,
+    rowsPerPage: pageSize.value,
+    rowsNumber: 0,
+    sortBy: 'index',
+    descending: false,
+  });
+
+  const rows = computed(() => rowsByPage.value.flat());
+
+  async function loadInfinitePage(page: number, append = false) {
+    if (!/^\d{8}$/.test(seed.value)) return;
+
+    const currentRequestId = ++requestId;
+    loading.value = true;
+
+    try {
+      const response = await fetchSongs({
+        page,
+        seed: seed.value,
+        likes: likes.value,
+        size: pageSize.value,
+      });
+
+      if (currentRequestId !== requestId) return;
+
+      totalPages.value = response.totalPages;
+      loadedPages.value = page;
+      rowsByPage.value = append
+        ? [...rowsByPage.value, response.items]
+        : [response.items];
+    } finally {
+      if (currentRequestId === requestId) loading.value = false;
+    }
+  }
+
+  async function onRequest(requestedPagination: TablePagination) {
+    if (enableVirtualScroll.value) return;
+    if (!/^\d{8}$/.test(seed.value)) return;
+
+    const currentRequestId = ++requestId;
+    loading.value = true;
+
+    try {
+      const response = await fetchSongs({
+        page: requestedPagination.page,
+        seed: seed.value,
+        likes: likes.value,
+        size: pageSize.value,
+      });
+
+      if (currentRequestId !== requestId) return;
+
+      totalPages.value = response.totalPages;
+      loadedPages.value = requestedPagination.page;
+      rowsByPage.value = [response.items];
+      pagination.value = {
+        ...requestedPagination,
+        rowsNumber: response.totalCount,
+        rowsPerPage: pageSize.value,
+      };
+    } finally {
+      if (currentRequestId === requestId) loading.value = false;
+    }
+  }
+
+  async function loadNextInfinitePage() {
+    if (!enableVirtualScroll.value || loading.value) return false;
+    if (loadedPages.value >= totalPages.value || rows.value.length === 0) return false;
+    await loadInfinitePage(loadedPages.value + 1, true);
+    return true;
+  }
+
+  const canLoadMoreInfinite = computed(
+    () =>
+      enableVirtualScroll.value &&
+      !loading.value &&
+      loadedPages.value > 0 &&
+      loadedPages.value < totalPages.value,
+  );
+
+  async function reloadCurrentMode() {
+    loadedPages.value = 0;
+    rowsByPage.value = [];
+    requestId++;
+
+    if (enableVirtualScroll.value) {
+      pagination.value = { page: 1, rowsPerPage: 0, sortBy: 'index', descending: false };
+      delete pagination.value.rowsNumber;
+      await loadInfinitePage(1, false);
+      return;
+    }
+
+    pagination.value = { page: 1, rowsPerPage: pageSize.value, rowsNumber: 0, sortBy: 'index', descending: false };
+    await onRequest(pagination.value);
+  }
+
+  watch([enableVirtualScroll, seed, likes], () => {
+    void reloadCurrentMode();
+  }, { immediate: true });
+
+  return {
+    enableVirtualScroll,
+    pageSize,
+    seed,
+    likes,
+    loading,
+    totalPages,
+    loadedPages,
+    rowsByPage,
+    pagination,
+    rows,
+    canLoadMoreInfinite,
+    onRequest,
+    loadNextInfinitePage,
+    reloadCurrentMode,
+  };
+});

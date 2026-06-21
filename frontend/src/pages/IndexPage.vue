@@ -1,11 +1,11 @@
 <template>
   <q-page padding class="tracks-page column no-wrap">
-    <Table class="col" />
+    <table-body class="col" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import Table from '@/components/Table.vue';
+import TableBody from '@/components/TableBody.vue';
 </script>
 
 <style scoped lang="scss">
