@@ -43,7 +43,7 @@ public class SongGenerator
         "Firelight", "Satellite", "Waves", "Parade", "Shadows",
     ];
 
-    public SongsPageResponse GeneratePage(int page, int seed, decimal likes, int size)
+    public SongsPageResponse GeneratePage(int page, long seed, decimal likes, int size)
     {
         if (size < 1)
         {
@@ -64,7 +64,7 @@ public class SongGenerator
         return new SongsPageResponse(page, size, TotalCount, totalPages, items);
     }
 
-    private static Song GenerateSong(int index, int seed, decimal likes)
+    private static Song GenerateSong(int index, long seed, decimal likes)
     {
         var rng = new Random(HashCode.Combine(seed, (int)(likes * 10), index));
 
@@ -72,11 +72,16 @@ public class SongGenerator
         var artist = Artists[rng.Next(Artists.Length)];
         var album = $"{AlbumPrefixes[rng.Next(AlbumPrefixes.Length)]} {AlbumPlaces[rng.Next(AlbumPlaces.Length)]}";
         var genre = Genres[rng.Next(Genres.Length)];
-        var songLikes = RoundLikes(Math.Clamp(likes + (rng.Next(-10, 11) * 0.1m), 0m, 10m));
+        var songLikes = PickIntegerLikes(rng, likes);
 
         return new Song(index, index, title, artist, album, genre, songLikes);
     }
 
-    private static decimal RoundLikes(decimal value) =>
-        Math.Round(value, 1, MidpointRounding.AwayFromZero);
+    private static int PickIntegerLikes(Random rng, decimal likes)
+    {
+        var baseLikes = (int)Math.Floor(likes);
+        var fractionalPart = likes - baseLikes;
+
+        return rng.NextDouble() < (double)fractionalPart ? baseLikes + 1 : baseLikes;
+    }
 }

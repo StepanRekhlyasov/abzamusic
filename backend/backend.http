@@ -1,6 +1,6 @@
 @backend_HostAddress = http://localhost:5055
 
-GET {{backend_HostAddress}}/api/generate/songs?page=1&seed=12345678&likes=5.0
+GET {{backend_HostAddress}}/api/generate/songs?page=1&seed=1234567890123456&likes=5.0
 Accept: application/json
 
 ###

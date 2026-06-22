@@ -7,4 +7,4 @@ public record Song(
     string Artist,
     string Album,
     string Genre,
-    decimal Likes);
+    int Likes);

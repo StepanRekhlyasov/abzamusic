@@ -26,10 +26,8 @@
           label="Seed"
           outlined
           dense
-          mask="########"
-          unmasked-value
-          hint="8 цифр"
-          :rules="[(value) => /^\d{8}$/.test(value ?? '') || 'Нужно 8 цифр']"
+          hint="64-bit целое"
+          :rules="[(value) => isValidSeed(value ?? '') || 'Нужно 64-bit целое']"
         />
       </div>
 
@@ -54,6 +52,6 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { useSongsStore } from '@/stores/songs';
+import { isValidSeed, useSongsStore } from '@/stores/songs';
 const { enableVirtualScroll, seed, likes } = storeToRefs(useSongsStore());
 </script>

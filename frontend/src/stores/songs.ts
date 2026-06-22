@@ -3,6 +3,20 @@ import { computed, ref, watch } from 'vue';
 
 import type { GenerateSongsParams, Song, SongsPageResponse } from '@/api/songs';
 
+const LONG_MIN = -(2n ** 63n);
+const LONG_MAX = 2n ** 63n - 1n;
+
+export function isValidSeed(value: string): boolean {
+  if (!/^-?\d+$/.test(value)) return false;
+
+  try {
+    const parsed = BigInt(value);
+    return parsed >= LONG_MIN && parsed <= LONG_MAX;
+  } catch {
+    return false;
+  }
+}
+
 type TablePagination = {
   page: number;
   rowsPerPage: number;
@@ -31,7 +45,7 @@ async function fetchSongs(params: GenerateSongsParams): Promise<SongsPageRespons
 export const useSongsStore = defineStore('songs', () => {
   const enableVirtualScroll = ref(false);
   const pageSize = ref(10);
-  const seed = ref('12345678');
+  const seed = ref('1234567890123456');
   const likes = ref(5.0);
   const loading = ref(false);
   const totalPages = ref(1);
@@ -50,7 +64,7 @@ export const useSongsStore = defineStore('songs', () => {
   const rows = computed(() => rowsByPage.value.flat());
 
   async function loadInfinitePage(page: number, append = false) {
-    if (!/^\d{8}$/.test(seed.value)) return;
+    if (!isValidSeed(seed.value)) return;
 
     const currentRequestId = ++requestId;
     loading.value = true;
@@ -77,7 +91,7 @@ export const useSongsStore = defineStore('songs', () => {
 
   async function onRequest(requestedPagination: TablePagination) {
     if (enableVirtualScroll.value) return;
-    if (!/^\d{8}$/.test(seed.value)) return;
+    if (!isValidSeed(seed.value)) return;
 
     const currentRequestId = ++requestId;
     loading.value = true;
