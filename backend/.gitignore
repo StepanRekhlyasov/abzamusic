@@ -14,3 +14,4 @@ I use the following .gitignore for C# projects. Additional patterns are added as
 _ReSharper.*
 *.resharper
 Ankh.NoLoad
+midi-cache/

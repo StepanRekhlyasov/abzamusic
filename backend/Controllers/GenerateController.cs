@@ -6,7 +6,10 @@ namespace backend.Controllers;
 
 [ApiController]
 [Route("api/generate")]
-public class GenerateController(SongGenerator songGenerator, AlbumCoverGenerator albumCoverGenerator) : ControllerBase
+public class GenerateController(
+    SongGenerator songGenerator,
+    AlbumCoverGenerator albumCoverGenerator,
+    MidiGenerator midiGenerator) : ControllerBase
 {
     [HttpGet("songs")]
     public ActionResult<SongsPageResponse> GetSongs(
@@ -69,5 +72,83 @@ public class GenerateController(SongGenerator songGenerator, AlbumCoverGenerator
 
         var svg = albumCoverGenerator.GenerateSvg(album, artist, title, seedValue, genre);
         return Content(svg, "image/svg+xml");
+    }
+
+    [HttpGet("midi")]
+    public async Task<IActionResult> GetMidi(
+        [FromQuery] string seed,
+        [FromQuery] int index,
+        [FromQuery] string genre,
+        [FromQuery] string lang = SongLexicons.DefaultLanguage,
+        CancellationToken cancellationToken = default)
+    {
+        if (index < 1)
+        {
+            return BadRequest("Index must be greater than or equal to 1.");
+        }
+
+        if (string.IsNullOrWhiteSpace(genre))
+        {
+            return BadRequest("Genre is required.");
+        }
+
+        if (!SeedParser.TryParse(seed, out var seedValue))
+        {
+            return BadRequest("Seed must be a valid 64-bit alphanumeric value.");
+        }
+
+        if (!SongLexicons.TryGet(lang, out _))
+        {
+            return BadRequest("Language must be 'en' or 'de'.");
+        }
+
+        var midiBytes = await midiGenerator.TryGenerateMidiAsync(seedValue, index, genre, lang, cancellationToken);
+        if (midiBytes is null)
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                "MIDI generation is not available. Install Python with musiclang_predict.");
+        }
+
+        return File(midiBytes, "audio/midi", $"song-{index}.mid");
+    }
+
+    [HttpGet("preview")]
+    public async Task<IActionResult> GetPreview(
+        [FromQuery] string seed,
+        [FromQuery] int index,
+        [FromQuery] string genre,
+        [FromQuery] string lang = SongLexicons.DefaultLanguage,
+        CancellationToken cancellationToken = default)
+    {
+        if (index < 1)
+        {
+            return BadRequest("Index must be greater than or equal to 1.");
+        }
+
+        if (string.IsNullOrWhiteSpace(genre))
+        {
+            return BadRequest("Genre is required.");
+        }
+
+        if (!SeedParser.TryParse(seed, out var seedValue))
+        {
+            return BadRequest("Seed must be a valid 64-bit alphanumeric value.");
+        }
+
+        if (!SongLexicons.TryGet(lang, out _))
+        {
+            return BadRequest("Language must be 'en' or 'de'.");
+        }
+
+        var wavBytes = await midiGenerator.TryGeneratePreviewAsync(seedValue, index, genre, lang, cancellationToken);
+        if (wavBytes is null)
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                "Audio preview is not available. Install Python, musiclang_predict and FluidSynth.");
+        }
+
+        return File(wavBytes, "audio/wav", $"song-{index}.wav");
     }
 }

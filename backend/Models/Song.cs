@@ -8,4 +8,6 @@ public record Song(
     string Album,
     string Genre,
     int Likes,
-    string CoverUrl);
+    string CoverUrl,
+    string PreviewUrl,
+    string MidiUrl);

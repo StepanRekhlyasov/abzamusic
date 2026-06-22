@@ -75,6 +75,13 @@
             <div class="column">
               <span class="text-subtitle2 text-grey-7">{{ t('album') }}</span>
               <span class="text-body1">{{ props.row.album }}</span>
+              <div class="q-mt-md">
+                <TrackPlayer
+                  :preview-url="props.row.previewUrl"
+                  :midi-url="props.row.midiUrl"
+                  :title="props.row.title"
+                />
+              </div>
             </div>
           </div>
         </q-td>
@@ -90,6 +97,7 @@ import { storeToRefs } from 'pinia';
 import type { QTable, QTableProps } from 'quasar';
 
 import TableToolbar from '@/components/TableToolbar.vue';
+import TrackPlayer from '@/components/TrackPlayer.vue';
 import { isInfiniteSongsTotal } from '@/api/songs';
 import { useSongsStore } from '@/stores/songs';
 
@@ -229,6 +237,11 @@ onBeforeUnmount(() => {
 
 .expanded-content {
   min-height: 160px;
+}
+
+.expanded-content .column {
+  flex: 1;
+  min-width: 0;
 }
 
 .album-cover {

@@ -54,8 +54,10 @@ public class SongGenerator
         var songLikes = PickIntegerLikes(rng, likes);
 
         var coverUrl = AlbumCoverGenerator.BuildUrl(album, artist, title, genre, seedString);
+        var previewUrl = MidiGenerator.BuildPreviewUrl(seedString, index, genre, language);
+        var midiUrl = MidiGenerator.BuildMidiUrl(seedString, index, genre, language);
 
-        return new Song(index, index, title, artist, album, genre, songLikes, coverUrl);
+        return new Song(index, index, title, artist, album, genre, songLikes, coverUrl, previewUrl, midiUrl);
     }
 
     private static int PickIntegerLikes(Random rng, decimal likes)

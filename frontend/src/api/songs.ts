@@ -13,6 +13,8 @@ export type Song = {
   genre: string;
   likes: number;
   coverUrl: string;
+  previewUrl: string;
+  midiUrl: string;
 };
 
 export type SongsPageResponse = {

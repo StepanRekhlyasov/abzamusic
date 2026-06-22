@@ -11,6 +11,8 @@ services:
           ignore:
             - ./backend/obj/
             - ./backend/bin/
+        - action: rebuild
+          path: ./scripts
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
