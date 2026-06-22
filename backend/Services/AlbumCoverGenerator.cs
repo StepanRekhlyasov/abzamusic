@@ -42,6 +42,7 @@ public class AlbumCoverGenerator(IHostEnvironment environment)
     {
         var rng = CreateRng(seed, album, artist, title);
         var fontFamily = CoverFonts[rng.Next(CoverFonts.Length)];
+        var visualEffect = CoverVisualEffects.Generate(rng);
         var backgroundDataUri = GetBackgroundDataUri(genre, seed, album, artist, title);
 
         var albumLines = WrapLines(album, 20, 2);
@@ -69,8 +70,10 @@ public class AlbumCoverGenerator(IHostEnvironment environment)
         svg.AppendLine("""      <stop offset="62%" stop-color="rgba(0,0,0,0.25)"/>""");
         svg.AppendLine("""      <stop offset="100%" stop-color="rgba(0,0,0,0.82)"/>""");
         svg.AppendLine("""    </linearGradient>""");
+        CoverVisualEffects.AppendDefs(svg, visualEffect);
         svg.AppendLine("""  </defs>""");
-        svg.AppendLine($"""  <image href="{backgroundDataUri}" x="0" y="0" width="200" height="200" preserveAspectRatio="xMidYMid slice"/>""");
+        svg.AppendLine($"""  <image href="{backgroundDataUri}" x="0" y="0" width="200" height="200" preserveAspectRatio="xMidYMid slice" filter="url(#coverFx)"/>""");
+        CoverVisualEffects.AppendLayers(svg, visualEffect);
         svg.AppendLine("""  <rect width="200" height="200" fill="url(#topOverlay)"/>""");
         svg.AppendLine("""  <rect width="200" height="200" fill="url(#bottomOverlay)"/>""");
 
