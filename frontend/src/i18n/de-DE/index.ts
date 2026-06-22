@@ -1,0 +1,23 @@
+export default {
+  tracks: 'Titel',
+  pagination: 'Seitennummerierung',
+  infiniteScroll: 'Endloses Scrollen',
+  seed: 'Seed',
+  seedHint: '64-Bit, 0-9 a-z A-Z',
+  seedInvalid: 'Ein gültiger 64-Bit-Wert ist erforderlich (0-9, a-z, A-Z)',
+  randomSeed: 'Zufälliger Seed',
+  likes: 'Likes',
+  language: 'Sprache',
+  expand: 'Aufklappen',
+  collapse: 'Zuklappen',
+  album: 'Album',
+  paginationRange: '{start}-{end}',
+  paginationRangeOf: '{start}-{end} von {total}',
+  columns: {
+    song: 'Titel',
+    artist: 'Künstler',
+    album: 'Album',
+    genre: 'Genre',
+    likes: 'Likes',
+  },
+};

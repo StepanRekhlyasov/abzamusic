@@ -7,6 +7,7 @@ import {
   type Song,
   type SongsPageResponse,
 } from '@/api/songs';
+import type { AppLanguage } from '@/i18n/languages';
 
 const BASE62_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const UINT64_MAX = 2n ** 64n - 1n;
@@ -71,6 +72,7 @@ async function fetchSongs(params: GenerateSongsParams): Promise<SongsPageRespons
     seed: params.seed,
     likes: params.likes.toFixed(1),
     size: String(params.size),
+    lang: params.lang,
   });
 
   const response = await fetch(`/api/generate/songs?${query.toString()}`);
@@ -87,6 +89,7 @@ export const useSongsStore = defineStore('songs', () => {
   const pageSize = ref(10);
   const seed = ref('5Ezg7yb1S');
   const likes = ref(5.0);
+  const language = ref<AppLanguage>('en');
   const loading = ref(false);
   const hasInfiniteSongs = ref(false);
   const totalPages = ref(1);
@@ -124,6 +127,7 @@ export const useSongsStore = defineStore('songs', () => {
         seed: seed.value,
         likes: likes.value,
         size: pageSize.value,
+        lang: language.value,
       });
 
       if (currentRequestId !== requestId) return;
@@ -154,6 +158,7 @@ export const useSongsStore = defineStore('songs', () => {
         seed: seed.value,
         likes: likes.value,
         size: pageSize.value,
+        lang: language.value,
       });
 
       if (currentRequestId !== requestId) return;
@@ -207,7 +212,7 @@ export const useSongsStore = defineStore('songs', () => {
     await onRequest(pagination.value);
   }
 
-  watch([enableVirtualScroll, seed, likes], () => {
+  watch([enableVirtualScroll, seed, likes, language], () => {
     void reloadCurrentMode();
   }, { immediate: true });
 
@@ -216,6 +221,7 @@ export const useSongsStore = defineStore('songs', () => {
     pageSize,
     seed,
     likes,
+    language,
     loading,
     hasInfiniteSongs,
     totalPages,

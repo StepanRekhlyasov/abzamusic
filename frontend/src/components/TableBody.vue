@@ -49,7 +49,7 @@
             dense
             size="sm"
             :icon="props.expand ? 'keyboard_arrow_up' : 'keyboard_arrow_down'"
-            :aria-label="props.expand ? 'Свернуть' : 'Развернуть'"
+            :aria-label="props.expand ? t('collapse') : t('expand')"
             @click="props.expand = !props.expand"
           />
         </q-td>
@@ -73,7 +73,7 @@
               class="album-cover"
             />
             <div class="column">
-              <span class="text-subtitle2 text-grey-7">Album</span>
+              <span class="text-subtitle2 text-grey-7">{{ t('album') }}</span>
               <span class="text-body1">{{ props.row.album }}</span>
             </div>
           </div>
@@ -84,7 +84,8 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch, type ComponentPublicInstance } from 'vue';
+import { nextTick, onBeforeUnmount, ref, watch, computed, type ComponentPublicInstance } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { storeToRefs } from 'pinia';
 import type { QTable, QTableProps } from 'quasar';
 
@@ -92,6 +93,7 @@ import TableToolbar from '@/components/TableToolbar.vue';
 import { isInfiniteSongsTotal } from '@/api/songs';
 import { useSongsStore } from '@/stores/songs';
 
+const { t } = useI18n();
 const songsStore = useSongsStore();
 const {
   enableVirtualScroll,
@@ -113,21 +115,21 @@ type TablePagination = {
   descending: boolean;
 };
 
-const columns: QTableProps['columns'] = [
+const columns = computed<QTableProps['columns']>(() => [
   { name: 'index', label: '#', field: 'index', align: 'left', sortable: false, style: 'width: 60px' },
-  { name: 'title', label: 'Song', field: 'title', align: 'left', sortable: false },
-  { name: 'artist', label: 'Artist', field: 'artist', align: 'left', sortable: false },
-  { name: 'album', label: 'Album', field: 'album', align: 'left', sortable: false },
-  { name: 'genre', label: 'Genre', field: 'genre', align: 'left', sortable: false },
-  { name: 'likes', label: 'Likes', field: 'likes', align: 'left', sortable: false, style: 'width: 80px' },
-];
+  { name: 'title', label: t('columns.song'), field: 'title', align: 'left', sortable: false },
+  { name: 'artist', label: t('columns.artist'), field: 'artist', align: 'left', sortable: false },
+  { name: 'album', label: t('columns.album'), field: 'album', align: 'left', sortable: false },
+  { name: 'genre', label: t('columns.genre'), field: 'genre', align: 'left', sortable: false },
+  { name: 'likes', label: t('columns.likes'), field: 'likes', align: 'left', sortable: false, style: 'width: 80px' },
+]);
 
 function formatPaginationLabel(start: number, end: number, total: number) {
   if (hasInfiniteSongs.value || isInfiniteSongsTotal(total)) {
-    return `${start}-${end}`;
+    return t('paginationRange', { start, end });
   }
 
-  return `${start}-${end} of ${total}`;
+  return t('paginationRangeOf', { start, end, total });
 }
 
 let observer: IntersectionObserver | null = null;

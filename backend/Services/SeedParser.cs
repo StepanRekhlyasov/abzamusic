@@ -7,28 +7,14 @@ public static class SeedParser
     public static bool TryParse(string? seed, out ulong value)
     {
         value = 0;
-
-        if (string.IsNullOrEmpty(seed))
-        {
-            return false;
-        }
-
+        if (string.IsNullOrEmpty(seed)) return false;
         foreach (var character in seed)
         {
             var digit = Alphabet.IndexOf(character);
-            if (digit < 0)
-            {
-                return false;
-            }
-
-            if (value > (ulong.MaxValue - (ulong)digit) / 62)
-            {
-                return false;
-            }
-
+            if (digit < 0) return false;
+            if (value > (ulong.MaxValue - (ulong)digit) / 62) return false;
             value = value * 62 + (ulong)digit;
         }
-
         return true;
     }
 }

@@ -13,7 +13,8 @@ public class GenerateController(SongGenerator songGenerator, AlbumCoverGenerator
         [FromQuery] int page,
         [FromQuery] string seed,
         [FromQuery] decimal likes,
-        [FromQuery] int size)
+        [FromQuery] int size,
+        [FromQuery] string lang = SongLexicons.DefaultLanguage)
     {
         if (page < 1)
         {
@@ -30,13 +31,19 @@ public class GenerateController(SongGenerator songGenerator, AlbumCoverGenerator
             return BadRequest("Likes must be between 0 and 10 with a step of 0.1.");
         }
 
-        return songGenerator.GeneratePage(page, seed, seedValue, likes, size);
+        if (!SongLexicons.TryGet(lang, out _))
+        {
+            return BadRequest("Language must be 'en' or 'de'.");
+        }
+
+        return songGenerator.GeneratePage(page, seed, seedValue, likes, size, lang);
     }
 
     [HttpGet("cover")]
     public ActionResult GetCover(
         [FromQuery] string album,
         [FromQuery] string artist,
+        [FromQuery] string title,
         [FromQuery] string seed,
         [FromQuery] string? genre = null)
     {
@@ -50,12 +57,17 @@ public class GenerateController(SongGenerator songGenerator, AlbumCoverGenerator
             return BadRequest("Artist is required.");
         }
 
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return BadRequest("Title is required.");
+        }
+
         if (!SeedParser.TryParse(seed, out var seedValue))
         {
             return BadRequest("Seed must be a valid 64-bit alphanumeric value.");
         }
 
-        var svg = albumCoverGenerator.GenerateSvg(album, artist, seedValue, genre);
+        var svg = albumCoverGenerator.GenerateSvg(album, artist, title, seedValue, genre);
         return Content(svg, "image/svg+xml");
     }
 }

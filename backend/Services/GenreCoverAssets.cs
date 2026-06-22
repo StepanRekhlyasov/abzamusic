@@ -2,32 +2,66 @@ namespace backend.Services;
 
 public static class GenreCoverAssets
 {
-    private static readonly Dictionary<string, string> GenreFiles = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> GenreSlugs = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Pop"] = "pop.png",
-        ["Rock"] = "rock.png",
-        ["Reggae"] = "reggae.png",
-        ["Electronic"] = "electronic.png",
-        ["Classical"] = "classical.png",
-        ["Jazz"] = "jazz.png",
-        ["Country"] = "country.png",
-        ["Blues"] = "blues.png",
-        ["Techno"] = "techno.png",
-        ["Hip-Hop"] = "hip-hop.png",
-        ["R&B"] = "rnb.png",
-        ["Metal"] = "metal.png",
+        ["Pop"] = "pop",
+        ["Rock"] = "rock",
+        ["Reggae"] = "reggae",
+        ["Electronic"] = "electronic",
+        ["Classical"] = "classical",
+        ["Jazz"] = "jazz",
+        ["Country"] = "country",
+        ["Blues"] = "blues",
+        ["Techno"] = "techno",
+        ["Hip-Hop"] = "hip-hop",
+        ["R&B"] = "rnb",
+        ["Metal"] = "metal",
     };
 
-    public static string GetBackgroundPath(string? genre)
-        => $"/{GetBackgroundRelativePath(genre)}";
+    public static string AssetsDirectory(IHostEnvironment environment)
+        => Path.Combine(environment.ContentRootPath, "assets", "genre-covers");
 
-    public static string GetBackgroundRelativePath(string? genre)
+    public static string GetSlug(string? genre)
     {
-        if (genre is not null && GenreFiles.TryGetValue(genre, out var file))
+        if (genre is not null && GenreSlugs.TryGetValue(genre, out var slug))
         {
-            return $"assets/genre-covers/{file}";
+            return slug;
         }
 
-        return "assets/genre-covers/pop.png";
+        return "pop";
+    }
+
+    public static string PickBackgroundFileName(
+        string? genre,
+        ulong seed,
+        string album,
+        string artist,
+        string title,
+        string assetsDirectory)
+    {
+        var slug = GetSlug(genre);
+        var files = Directory.GetFiles(assetsDirectory, $"{slug}*.png")
+            .Select(Path.GetFileName)
+            .Where(name => name is not null)
+            .Cast<string>()
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        if (files.Count == 0)
+        {
+            throw new FileNotFoundException(
+                $"No cover assets found for genre '{genre ?? "unknown"}' (slug: {slug}).",
+                assetsDirectory);
+        }
+
+        var rng = new Random(HashCode.Combine(
+            unchecked((int)(seed & uint.MaxValue)),
+            unchecked((int)(seed >> 32)),
+            StringComparer.Ordinal.GetHashCode(slug),
+            StringComparer.Ordinal.GetHashCode(album),
+            StringComparer.Ordinal.GetHashCode(artist),
+            StringComparer.Ordinal.GetHashCode(title)));
+
+        return files[rng.Next(files.Count)];
     }
 }

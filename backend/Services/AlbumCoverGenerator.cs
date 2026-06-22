@@ -2,92 +2,127 @@ using System.Text;
 
 namespace backend.Services;
 
-public class AlbumCoverGenerator(IWebHostEnvironment environment)
+public class AlbumCoverGenerator(IHostEnvironment environment)
 {
+    private static readonly string[] CoverFonts =
+    [
+        "Georgia, 'Times New Roman', serif",
+        "'Palatino Linotype', 'Book Antiqua', serif",
+        "Impact, 'Arial Black', sans-serif",
+        "'Trebuchet MS', Helvetica, sans-serif",
+        "Verdana, Geneva, sans-serif",
+        "Tahoma, Geneva, sans-serif",
+        "'Courier New', Courier, monospace",
+        "'Lucida Sans', 'Lucida Grande', sans-serif",
+        "Arial, Helvetica, sans-serif",
+        "'Segoe UI', Roboto, sans-serif",
+        "Garamond, 'Times New Roman', serif",
+        "'Franklin Gothic Medium', 'Arial Narrow', sans-serif",
+    ];
+
     private readonly Dictionary<string, string> _backgroundDataUris = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _cacheLock = new();
 
-    public static string BuildUrl(string album, string artist, string genre, string seed)
+    public static string BuildUrl(string album, string artist, string title, string genre, string seed)
     {
         return string.Concat(
             "/api/generate/cover?album=",
             Uri.EscapeDataString(album),
             "&artist=",
             Uri.EscapeDataString(artist),
+            "&title=",
+            Uri.EscapeDataString(title),
             "&genre=",
             Uri.EscapeDataString(genre),
             "&seed=",
             Uri.EscapeDataString(seed));
     }
 
-    public string GenerateSvg(string album, string artist, ulong seed, string? genre = null)
+    public string GenerateSvg(string album, string artist, string title, ulong seed, string? genre = null)
     {
-        var backgroundDataUri = GetBackgroundDataUri(genre);
-        var albumLines = WrapLines(album, 22, 2);
-        var artistLine = Truncate(artist, 28);
-        var albumFontSize = albumLines.Count > 1 ? 13 : album.Length > 24 ? 12 : 15;
-        var albumStartY = albumLines.Count > 1 ? 138 : 148;
+        var rng = CreateRng(seed, album, artist, title);
+        var fontFamily = CoverFonts[rng.Next(CoverFonts.Length)];
+        var backgroundDataUri = GetBackgroundDataUri(genre, seed, album, artist, title);
+
+        var albumLines = WrapLines(album, 20, 2);
+        var titleLine = Truncate(title, 26);
+        var artistLine = Truncate(artist, 26);
+
+        var albumFontSize = albumLines.Count > 1 ? 11 : album.Length > 22 ? 10 : 12;
+        var titleFontSize = title.Length > 22 ? 10 : 11;
+        var artistFontSize = 9;
+
+        var albumStartY = albumLines.Count > 1 ? 22 : 28;
+        var titleY = 162;
+        var artistY = 178;
 
         var svg = new StringBuilder();
         svg.AppendLine("""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">""");
         svg.AppendLine("""  <defs>""");
-        svg.AppendLine("""    <linearGradient id="overlay" x1="0" y1="0" x2="0" y2="1">""");
-        svg.AppendLine("""      <stop offset="0%" stop-color="rgba(0,0,0,0.05)"/>""");
-        svg.AppendLine("""      <stop offset="45%" stop-color="rgba(0,0,0,0.2)"/>""");
+        svg.AppendLine("""    <linearGradient id="topOverlay" x1="0" y1="0" x2="0" y2="1">""");
+        svg.AppendLine("""      <stop offset="0%" stop-color="rgba(0,0,0,0.78)"/>""");
+        svg.AppendLine("""      <stop offset="38%" stop-color="rgba(0,0,0,0.25)"/>""");
+        svg.AppendLine("""      <stop offset="100%" stop-color="rgba(0,0,0,0)"/>""");
+        svg.AppendLine("""    </linearGradient>""");
+        svg.AppendLine("""    <linearGradient id="bottomOverlay" x1="0" y1="0" x2="0" y2="1">""");
+        svg.AppendLine("""      <stop offset="0%" stop-color="rgba(0,0,0,0)"/>""");
+        svg.AppendLine("""      <stop offset="62%" stop-color="rgba(0,0,0,0.25)"/>""");
         svg.AppendLine("""      <stop offset="100%" stop-color="rgba(0,0,0,0.82)"/>""");
         svg.AppendLine("""    </linearGradient>""");
         svg.AppendLine("""  </defs>""");
         svg.AppendLine($"""  <image href="{backgroundDataUri}" x="0" y="0" width="200" height="200" preserveAspectRatio="xMidYMid slice"/>""");
-        svg.AppendLine("""  <rect width="200" height="200" fill="url(#overlay)"/>""");
+        svg.AppendLine("""  <rect width="200" height="200" fill="url(#topOverlay)"/>""");
+        svg.AppendLine("""  <rect width="200" height="200" fill="url(#bottomOverlay)"/>""");
 
         for (var i = 0; i < albumLines.Count; i++)
         {
-            var y = albumStartY + i * (albumFontSize + 4);
-            svg.AppendLine($"""  <text x="100" y="{y}" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="{albumFontSize}" font-weight="700" fill="rgba(255,255,255,0.96)">{EscapeXml(albumLines[i])}</text>""");
+            var y = albumStartY + i * (albumFontSize + 3);
+            svg.AppendLine(BuildTextLine(albumLines[i], y, albumFontSize, fontFamily, 700, "rgba(255,255,255,0.96)", 1.2));
         }
 
-        svg.AppendLine($"""  <text x="100" y="178" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="0.5">{EscapeXml(artistLine)}</text>""");
+        svg.AppendLine(BuildTextLine(titleLine, titleY, titleFontSize, fontFamily, 600, "rgba(255,255,255,0.94)", 0.6));
+        svg.AppendLine(BuildTextLine(artistLine, artistY, artistFontSize, fontFamily, 500, "rgba(255,255,255,0.78)", 0.4));
         svg.AppendLine("</svg>");
 
         return svg.ToString();
     }
 
-    private string GetBackgroundDataUri(string? genre)
+    private static Random CreateRng(ulong seed, string album, string artist, string title)
+        => new(HashCode.Combine(
+            unchecked((int)(seed & uint.MaxValue)),
+            unchecked((int)(seed >> 32)),
+            StringComparer.Ordinal.GetHashCode(album),
+            StringComparer.Ordinal.GetHashCode(artist),
+            StringComparer.Ordinal.GetHashCode(title)));
+
+    private static string BuildTextLine(
+        string text,
+        int y,
+        int fontSize,
+        string fontFamily,
+        int fontWeight,
+        string fill,
+        double letterSpacing)
+        => $"""  <text x="100" y="{y}" text-anchor="middle" font-family="{EscapeXml(fontFamily)}" font-size="{fontSize}" font-weight="{fontWeight}" fill="{fill}" letter-spacing="{letterSpacing.ToString(System.Globalization.CultureInfo.InvariantCulture)}">{EscapeXml(text)}</text>""";
+
+    private string GetBackgroundDataUri(string? genre, ulong seed, string album, string artist, string title)
     {
-        var cacheKey = genre ?? string.Empty;
+        var assetsDirectory = GenreCoverAssets.AssetsDirectory(environment);
+        var fileName = GenreCoverAssets.PickBackgroundFileName(genre, seed, album, artist, title, assetsDirectory);
+        var absolutePath = Path.Combine(assetsDirectory, fileName);
+
         lock (_cacheLock)
         {
-            if (_backgroundDataUris.TryGetValue(cacheKey, out var cached))
+            if (_backgroundDataUris.TryGetValue(fileName, out var cached))
             {
                 return cached;
             }
 
-            var relativePath = GenreCoverAssets.GetBackgroundRelativePath(genre);
-            var absolutePath = ResolveAssetPath(relativePath);
-            if (!File.Exists(absolutePath))
-            {
-                absolutePath = ResolveAssetPath(GenreCoverAssets.GetBackgroundRelativePath("Pop"));
-            }
-
-            if (!File.Exists(absolutePath))
-            {
-                throw new FileNotFoundException($"Genre cover asset was not found: {relativePath}", absolutePath);
-            }
-
             var bytes = File.ReadAllBytes(absolutePath);
             var dataUri = $"data:image/png;base64,{Convert.ToBase64String(bytes)}";
-            _backgroundDataUris[cacheKey] = dataUri;
+            _backgroundDataUris[fileName] = dataUri;
             return dataUri;
         }
-    }
-
-    private string ResolveAssetPath(string relativePath)
-    {
-        var assetsRoot = !string.IsNullOrEmpty(environment.WebRootPath)
-            ? environment.WebRootPath
-            : Path.Combine(environment.ContentRootPath, "wwwroot");
-
-        return Path.Combine(assetsRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
     }
 
     private static List<string> WrapLines(string text, int maxCharsPerLine, int maxLines)

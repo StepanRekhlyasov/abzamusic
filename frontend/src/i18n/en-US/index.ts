@@ -1,7 +1,23 @@
-// This is just an example,
-// so you can safely delete all default props below
-
 export default {
-  failed: 'Action failed',
-  success: 'Action was successful',
+  tracks: 'Tracks',
+  pagination: 'Pagination',
+  infiniteScroll: 'Infinite scroll',
+  seed: 'Seed',
+  seedHint: '64-bit, 0-9 a-z A-Z',
+  seedInvalid: 'A valid 64-bit value is required (0-9, a-z, A-Z)',
+  randomSeed: 'Random seed',
+  likes: 'Likes',
+  language: 'Language',
+  expand: 'Expand',
+  collapse: 'Collapse',
+  album: 'Album',
+  paginationRange: '{start}-{end}',
+  paginationRangeOf: '{start}-{end} of {total}',
+  columns: {
+    song: 'Song',
+    artist: 'Artist',
+    album: 'Album',
+    genre: 'Genre',
+    likes: 'Likes',
+  },
 };

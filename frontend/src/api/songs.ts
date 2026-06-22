@@ -28,4 +28,5 @@ export type GenerateSongsParams = {
   seed: string;
   likes: number;
   size: number;
+  lang: string;
 };
