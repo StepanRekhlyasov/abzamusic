@@ -24,7 +24,7 @@
     <template #body="props">
       <q-tr
         :props="props"
-        :ref="(el) => bindLastRowObserver(el, props.pageIndex)"
+        :ref="(el) => bindLastRowObserver((el as ComponentPublicInstance), props.pageIndex)"
       >
         <q-td v-for="col in props.cols" :key="col.name" :props="props">
           {{ col.value }}
@@ -49,7 +49,6 @@ const {
   loading,
   pagination,
   rows,
-  canLoadMoreInfinite,
 } = storeToRefs(songsStore);
 
 const tableRef = ref<QTable | null>(null);
@@ -74,21 +73,6 @@ const columns: QTableProps['columns'] = [
 let observer: IntersectionObserver | null = null;
 let observedLastRowIndex = -1;
 
-function resolveElement(el: Element | ComponentPublicInstance | null): Element | null {
-  if (!el) return null;
-  if (el instanceof Element) return el;
-  const element = (el as ComponentPublicInstance & { $el?: Element }).$el;
-  return element instanceof Element ? element : null;
-}
-
-function getScrollRoot(element: Element): Element | null {
-  let parent = element.parentElement; 
-  while (parent && !(getComputedStyle(parent).overflowY === 'auto' || getComputedStyle(parent).overflowY === 'scroll')) {
-    parent = parent.parentElement;
-  }
-  return parent ?? null;
-}
-
 function disconnectObserver() {
   observer?.disconnect();
   observer = null;
@@ -96,27 +80,21 @@ function disconnectObserver() {
 }
 
 async function handleLastRowVisible() {
-  if (!canLoadMoreInfinite.value) {
-    return;
-  }
 
   const loaded = await songsStore.loadNextInfinitePage();
-  if (!loaded) {
-    return;
-  }
+  if (!loaded) return;
 
   await nextTick();
   tableRef.value?.resetVirtualScroll();
 }
 
 function bindLastRowObserver(
-  el: Element | ComponentPublicInstance | null,
+  el: ComponentPublicInstance | null,
   pageIndex: number,
 ) {
+  if (!el) return;
   if (!enableVirtualScroll.value || pageIndex !== rows.value.length - 1) return;
   if (observedLastRowIndex === pageIndex) return;
-  const element = resolveElement(el);
-  if (!element) return;
   disconnectObserver();
   observedLastRowIndex = pageIndex;
   observer = new IntersectionObserver(
@@ -126,12 +104,11 @@ function bindLastRowObserver(
       }
     },
     {
-      root: getScrollRoot(element),
+      root: el.$el.parentElement,
       threshold: 0.1,
     },
   );
-
-  observer.observe(element);
+  observer.observe(el.$el);
 }
 
 function handleRequest(requestProps: { pagination: TablePagination }) {
