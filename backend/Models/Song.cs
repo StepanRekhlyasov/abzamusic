@@ -7,4 +7,5 @@ public record Song(
     string Artist,
     string Album,
     string Genre,
-    int Likes);
+    int Likes,
+    string CoverUrl);

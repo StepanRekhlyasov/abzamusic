@@ -27,7 +27,17 @@
         :ref="(el) => bindLastRowObserver((el as ComponentPublicInstance), props.pageIndex)"
       >
         <q-td v-for="col in props.cols" :key="col.name" :props="props">
-          {{ col.value }}
+          <q-img
+            v-if="col.name === 'cover'"
+            :src="props.row.coverUrl"
+            :alt="props.row.album"
+            width="40px"
+            height="40px"
+            class="album-cover"
+          />
+          <template v-else>
+            {{ col.value }}
+          </template>
         </q-td>
       </q-tr>
     </template>
@@ -62,12 +72,13 @@ type TablePagination = {
 };
 
 const columns: QTableProps['columns'] = [
-  { name: 'index', label: '#', field: 'index', align: 'left', sortable: true, style: 'width: 60px' },
-  { name: 'title', label: 'Song', field: 'title', align: 'left', sortable: true },
-  { name: 'artist', label: 'Artist', field: 'artist', align: 'left', sortable: true },
-  { name: 'album', label: 'Album', field: 'album', align: 'left', sortable: true },
-  { name: 'genre', label: 'Genre', field: 'genre', align: 'left', sortable: true },
-  { name: 'likes', label: 'Likes', field: 'likes', align: 'left', sortable: true, style: 'width: 80px' },
+  { name: 'index', label: '#', field: 'index', align: 'left', sortable: false, style: 'width: 60px' },
+  { name: 'cover', label: '', field: 'coverUrl', align: 'left', style: 'width: 52px' },
+  { name: 'title', label: 'Song', field: 'title', align: 'left', sortable: false },
+  { name: 'artist', label: 'Artist', field: 'artist', align: 'left', sortable: false },
+  { name: 'album', label: 'Album', field: 'album', align: 'left', sortable: false },
+  { name: 'genre', label: 'Genre', field: 'genre', align: 'left', sortable: false },
+  { name: 'likes', label: 'Likes', field: 'likes', align: 'left', sortable: false, style: 'width: 80px' },
 ];
 
 let observer: IntersectionObserver | null = null;
@@ -152,5 +163,10 @@ onBeforeUnmount(() => {
   :deep(tbody) {
     scroll-margin-top: 48px;
   }
+}
+
+.album-cover {
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 </style>

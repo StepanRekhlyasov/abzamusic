@@ -43,7 +43,7 @@ public class SongGenerator
         "Firelight", "Satellite", "Waves", "Parade", "Shadows",
     ];
 
-    public SongsPageResponse GeneratePage(int page, long seed, decimal likes, int size)
+    public SongsPageResponse GeneratePage(int page, string seedString, ulong seed, decimal likes, int size)
     {
         if (size < 1)
         {
@@ -58,15 +58,19 @@ public class SongGenerator
         for (var offset = 0; offset < count; offset++)
         {
             var index = startIndex + offset + 1;
-            items.Add(GenerateSong(index, seed, likes));
+            items.Add(GenerateSong(index, seedString, seed, likes));
         }
 
         return new SongsPageResponse(page, size, TotalCount, totalPages, items);
     }
 
-    private static Song GenerateSong(int index, long seed, decimal likes)
+    private static Song GenerateSong(int index, string seedString, ulong seed, decimal likes)
     {
-        var rng = new Random(HashCode.Combine(seed, (int)(likes * 10), index));
+        var rng = new Random(HashCode.Combine(
+            unchecked((int)(seed & uint.MaxValue)),
+            unchecked((int)(seed >> 32)),
+            (int)(likes * 10),
+            index));
 
         var title = $"{SongAdjectives[rng.Next(SongAdjectives.Length)]} {SongNouns[rng.Next(SongNouns.Length)]}";
         var artist = Artists[rng.Next(Artists.Length)];
@@ -74,7 +78,9 @@ public class SongGenerator
         var genre = Genres[rng.Next(Genres.Length)];
         var songLikes = PickIntegerLikes(rng, likes);
 
-        return new Song(index, index, title, artist, album, genre, songLikes);
+        var coverUrl = AlbumCoverGenerator.BuildUrl(album, seedString);
+
+        return new Song(index, index, title, artist, album, genre, songLikes, coverUrl);
     }
 
     private static int PickIntegerLikes(Random rng, decimal likes)

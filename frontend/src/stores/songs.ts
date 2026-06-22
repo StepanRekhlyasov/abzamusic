@@ -3,18 +3,53 @@ import { computed, ref, watch } from 'vue';
 
 import type { GenerateSongsParams, Song, SongsPageResponse } from '@/api/songs';
 
-const LONG_MIN = -(2n ** 63n);
-const LONG_MAX = 2n ** 63n - 1n;
+const BASE62_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const UINT64_MAX = 2n ** 64n - 1n;
+
+function parseBase62(value: string): bigint | null {
+  let result = 0n;
+
+  for (const character of value) {
+    const digit = BASE62_ALPHABET.indexOf(character);
+    if (digit < 0) return null;
+
+    result = result * 62n + BigInt(digit);
+    if (result > UINT64_MAX) return null;
+  }
+
+  return result;
+}
+
+function encodeBase62(value: bigint): string {
+  if (value === 0n) return '0';
+
+  let result = '';
+  let current = value;
+
+  while (current > 0n) {
+    const remainder = Number(current % 62n);
+    result = BASE62_ALPHABET[remainder] + result;
+    current /= 62n;
+  }
+
+  return result;
+}
 
 export function isValidSeed(value: string): boolean {
-  if (!/^-?\d+$/.test(value)) return false;
+  if (!value || !/^[0-9a-zA-Z]+$/.test(value)) return false;
+  return parseBase62(value) !== null;
+}
 
-  try {
-    const parsed = BigInt(value);
-    return parsed >= LONG_MIN && parsed <= LONG_MAX;
-  } catch {
-    return false;
+export function randomSeed(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+
+  let value = 0n;
+  for (const byte of bytes) {
+    value = (value << 8n) | BigInt(byte);
   }
+
+  return encodeBase62(value);
 }
 
 type TablePagination = {
@@ -45,7 +80,7 @@ async function fetchSongs(params: GenerateSongsParams): Promise<SongsPageRespons
 export const useSongsStore = defineStore('songs', () => {
   const enableVirtualScroll = ref(false);
   const pageSize = ref(10);
-  const seed = ref('1234567890123456');
+  const seed = ref('5Ezg7yb1S');
   const likes = ref(5.0);
   const loading = ref(false);
   const totalPages = ref(1);

@@ -6,6 +6,7 @@ export type Song = {
   album: string;
   genre: string;
   likes: number;
+  coverUrl: string;
 };
 
 export type SongsPageResponse = {

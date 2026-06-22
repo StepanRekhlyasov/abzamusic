@@ -26,9 +26,23 @@
           label="Seed"
           outlined
           dense
-          hint="64-bit целое"
-          :rules="[(value) => isValidSeed(value ?? '') || 'Нужно 64-bit целое']"
-        />
+          hint="64-bit, 0-9 a-z A-Z"
+          :rules="[(value) => isValidSeed(value ?? '') || 'Нужно 64-bit значение (0-9, a-z, A-Z)']"
+        >
+          <template #append>
+            <q-btn
+              flat
+              dense
+              round
+              icon="casino"
+              color="primary"
+              aria-label="Случайный seed"
+              @click="seed = randomSeed()"
+            >
+              <q-tooltip>Случайный seed</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
       </div>
 
       <div class="col-12 col-sm-4">
@@ -52,6 +66,6 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { isValidSeed, useSongsStore } from '@/stores/songs';
+import { isValidSeed, randomSeed, useSongsStore } from '@/stores/songs';
 const { enableVirtualScroll, seed, likes } = storeToRefs(useSongsStore());
 </script>

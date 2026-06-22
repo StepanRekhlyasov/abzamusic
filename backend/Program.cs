@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddSingleton<SongGenerator>();
+builder.Services.AddSingleton<AlbumCoverGenerator>();
 
 var app = builder.Build();
 
