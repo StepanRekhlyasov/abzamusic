@@ -1,7 +1,12 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 
-import type { GenerateSongsParams, Song, SongsPageResponse } from '@/api/songs';
+import {
+  isInfiniteSongsTotal,
+  type GenerateSongsParams,
+  type Song,
+  type SongsPageResponse,
+} from '@/api/songs';
 
 const BASE62_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const UINT64_MAX = 2n ** 64n - 1n;
@@ -83,6 +88,7 @@ export const useSongsStore = defineStore('songs', () => {
   const seed = ref('5Ezg7yb1S');
   const likes = ref(5.0);
   const loading = ref(false);
+  const hasInfiniteSongs = ref(false);
   const totalPages = ref(1);
   const loadedPages = ref(0);
   const rowsByPage = ref<Song[][]>([]);
@@ -97,6 +103,14 @@ export const useSongsStore = defineStore('songs', () => {
   });
 
   const rows = computed(() => rowsByPage.value.flat());
+
+  function paginationRowsNumber(page: number, totalCount: number): number {
+    if (isInfiniteSongsTotal(totalCount)) {
+      return page * pageSize.value + 1;
+    }
+
+    return totalCount;
+  }
 
   async function loadInfinitePage(page: number, append = false) {
     if (!isValidSeed(seed.value)) return;
@@ -114,7 +128,10 @@ export const useSongsStore = defineStore('songs', () => {
 
       if (currentRequestId !== requestId) return;
 
-      totalPages.value = response.totalPages;
+      hasInfiniteSongs.value = isInfiniteSongsTotal(response.totalCount);
+      if (!hasInfiniteSongs.value) {
+        totalPages.value = response.totalPages;
+      }
       loadedPages.value = page;
       rowsByPage.value = append
         ? [...rowsByPage.value, response.items]
@@ -141,12 +158,15 @@ export const useSongsStore = defineStore('songs', () => {
 
       if (currentRequestId !== requestId) return;
 
-      totalPages.value = response.totalPages;
+      hasInfiniteSongs.value = isInfiniteSongsTotal(response.totalCount);
+      if (!hasInfiniteSongs.value) {
+        totalPages.value = response.totalPages;
+      }
       loadedPages.value = requestedPagination.page;
       rowsByPage.value = [response.items];
       pagination.value = {
         ...requestedPagination,
-        rowsNumber: response.totalCount,
+        rowsNumber: paginationRowsNumber(requestedPagination.page, response.totalCount),
         rowsPerPage: pageSize.value,
       };
     } finally {
@@ -156,7 +176,8 @@ export const useSongsStore = defineStore('songs', () => {
 
   async function loadNextInfinitePage() {
     if (!enableVirtualScroll.value || loading.value) return false;
-    if (loadedPages.value >= totalPages.value || rows.value.length === 0) return false;
+    if (rows.value.length === 0) return false;
+    if (!hasInfiniteSongs.value && loadedPages.value >= totalPages.value) return false;
     await loadInfinitePage(loadedPages.value + 1, true);
     return true;
   }
@@ -166,12 +187,13 @@ export const useSongsStore = defineStore('songs', () => {
       enableVirtualScroll.value &&
       !loading.value &&
       loadedPages.value > 0 &&
-      loadedPages.value < totalPages.value,
+      (hasInfiniteSongs.value || loadedPages.value < totalPages.value),
   );
 
   async function reloadCurrentMode() {
     loadedPages.value = 0;
     rowsByPage.value = [];
+    hasInfiniteSongs.value = false;
     requestId++;
 
     if (enableVirtualScroll.value) {
@@ -195,6 +217,7 @@ export const useSongsStore = defineStore('songs', () => {
     seed,
     likes,
     loading,
+    hasInfiniteSongs,
     totalPages,
     loadedPages,
     rowsByPage,

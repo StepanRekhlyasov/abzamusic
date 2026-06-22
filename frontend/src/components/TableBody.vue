@@ -14,6 +14,7 @@
     :virtual-scroll-slice-size="30"
     v-model:pagination="pagination"
     v-model:expanded="expanded"
+    :pagination-label="formatPaginationLabel"
     :rows-per-page-options="enableVirtualScroll ? [0] : [pageSize]"
     :hide-bottom="enableVirtualScroll"
     @request="handleRequest"
@@ -88,6 +89,7 @@ import { storeToRefs } from 'pinia';
 import type { QTable, QTableProps } from 'quasar';
 
 import TableToolbar from '@/components/TableToolbar.vue';
+import { isInfiniteSongsTotal } from '@/api/songs';
 import { useSongsStore } from '@/stores/songs';
 
 const songsStore = useSongsStore();
@@ -97,6 +99,7 @@ const {
   loading,
   pagination,
   rows,
+  hasInfiniteSongs,
 } = storeToRefs(songsStore);
 
 const tableRef = ref<QTable | null>(null);
@@ -118,6 +121,14 @@ const columns: QTableProps['columns'] = [
   { name: 'genre', label: 'Genre', field: 'genre', align: 'left', sortable: false },
   { name: 'likes', label: 'Likes', field: 'likes', align: 'left', sortable: false, style: 'width: 80px' },
 ];
+
+function formatPaginationLabel(start: number, end: number, total: number) {
+  if (hasInfiniteSongs.value || isInfiniteSongsTotal(total)) {
+    return `${start}-${end}`;
+  }
+
+  return `${start}-${end} of ${total}`;
+}
 
 let observer: IntersectionObserver | null = null;
 let observedLastRowIndex = -1;

@@ -4,7 +4,7 @@ namespace backend.Services;
 
 public class SongGenerator
 {
-    public const int TotalCount = 101;
+    private const int InfiniteTotal = int.MaxValue;
 
     private static readonly string[] Genres =
     [
@@ -50,18 +50,16 @@ public class SongGenerator
             throw new ArgumentException("Size must be greater than 0.");
         }
 
-        var totalPages = (int)Math.Ceiling(TotalCount / (double)size);
         var startIndex = (page - 1) * size;
-        var count = Math.Min(size, TotalCount - startIndex);
 
-        var items = new List<Song>(count);
-        for (var offset = 0; offset < count; offset++)
+        var items = new List<Song>(size);
+        for (var offset = 0; offset < size; offset++)
         {
             var index = startIndex + offset + 1;
             items.Add(GenerateSong(index, seedString, seed, likes));
         }
 
-        return new SongsPageResponse(page, size, TotalCount, totalPages, items);
+        return new SongsPageResponse(page, size, InfiniteTotal, InfiniteTotal, items);
     }
 
     private static Song GenerateSong(int index, string seedString, ulong seed, decimal likes)

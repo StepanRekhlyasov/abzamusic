@@ -1,3 +1,9 @@
+export const INFINITE_SONGS_TOTAL = 2_147_483_647;
+
+export function isInfiniteSongsTotal(totalCount: number): boolean {
+  return totalCount >= INFINITE_SONGS_TOTAL;
+}
+
 export type Song = {
   id: number;
   index: number;
