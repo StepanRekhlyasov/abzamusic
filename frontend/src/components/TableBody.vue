@@ -13,6 +13,7 @@
     :virtual-scroll-sticky-size-start="48"
     :virtual-scroll-slice-size="30"
     v-model:pagination="pagination"
+    v-model:expanded="expanded"
     :rows-per-page-options="enableVirtualScroll ? [0] : [pageSize]"
     :hide-bottom="enableVirtualScroll"
     @request="handleRequest"
@@ -21,23 +22,60 @@
       <TableToolbar />
     </template>
 
+    <template #header="props">
+      <q-tr :props="props">
+        <q-th auto-width />
+        <q-th
+          v-for="col in props.cols"
+          :key="col.name"
+          :props="props"
+        >
+          {{ col.label }}
+        </q-th>
+      </q-tr>
+    </template>
+
     <template #body="props">
       <q-tr
+        :key="`main-${props.row.id}`"
         :props="props"
         :ref="(el) => bindLastRowObserver((el as ComponentPublicInstance), props.pageIndex)"
       >
-        <q-td v-for="col in props.cols" :key="col.name" :props="props">
-          <q-img
-            v-if="col.name === 'cover'"
-            :src="props.row.coverUrl"
-            :alt="props.row.album"
-            width="40px"
-            height="40px"
-            class="album-cover"
+        <q-td auto-width>
+          <q-btn
+            flat
+            round
+            dense
+            size="sm"
+            :icon="props.expand ? 'keyboard_arrow_up' : 'keyboard_arrow_down'"
+            :aria-label="props.expand ? 'Свернуть' : 'Развернуть'"
+            @click="props.expand = !props.expand"
           />
-          <template v-else>
-            {{ col.value }}
-          </template>
+        </q-td>
+        <q-td v-for="col in props.cols" :key="col.name" :props="props">
+          {{ col.value }}
+        </q-td>
+      </q-tr>
+      <q-tr
+        v-if="props.expand"
+        :key="`expand-${props.row.id}`"
+        :props="props"
+        class="q-virtual-scroll--with-prev expanded-row"
+      >
+        <q-td :colspan="props.cols.length + 1">
+          <div class="expanded-content row items-center q-gutter-md q-pa-sm">
+            <q-img
+              :src="props.row.coverUrl"
+              :alt="props.row.album"
+              width="160px"
+              height="160px"
+              class="album-cover"
+            />
+            <div class="column">
+              <span class="text-subtitle2 text-grey-7">Album</span>
+              <span class="text-body1">{{ props.row.album }}</span>
+            </div>
+          </div>
         </q-td>
       </q-tr>
     </template>
@@ -62,6 +100,7 @@ const {
 } = storeToRefs(songsStore);
 
 const tableRef = ref<QTable | null>(null);
+const expanded = ref<(string | number)[]>([]);
 
 type TablePagination = {
   page: number;
@@ -73,7 +112,6 @@ type TablePagination = {
 
 const columns: QTableProps['columns'] = [
   { name: 'index', label: '#', field: 'index', align: 'left', sortable: false, style: 'width: 60px' },
-  { name: 'cover', label: '', field: 'coverUrl', align: 'left', style: 'width: 52px' },
   { name: 'title', label: 'Song', field: 'title', align: 'left', sortable: false },
   { name: 'artist', label: 'Artist', field: 'artist', align: 'left', sortable: false },
   { name: 'album', label: 'Album', field: 'album', align: 'left', sortable: false },
@@ -128,6 +166,13 @@ function handleRequest(requestProps: { pagination: TablePagination }) {
 
 watch([rows, enableVirtualScroll], () => {
   disconnectObserver();
+  expanded.value = [];
+});
+
+watch(expanded, async () => {
+  if (!enableVirtualScroll.value) return;
+  await nextTick();
+  tableRef.value?.resetVirtualScroll();
 });
 
 onBeforeUnmount(() => {
@@ -163,6 +208,14 @@ onBeforeUnmount(() => {
   :deep(tbody) {
     scroll-margin-top: 48px;
   }
+}
+
+.expanded-row {
+  background-color: #fafafa;
+}
+
+.expanded-content {
+  min-height: 160px;
 }
 
 .album-cover {

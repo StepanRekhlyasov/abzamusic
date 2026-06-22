@@ -9,7 +9,7 @@ public class SongGenerator
     private static readonly string[] Genres =
     [
         "Rock", "Pop", "Jazz", "Hip-Hop", "Electronic", "Classical",
-        "R&B", "Metal", "Country", "Blues", "Indie", "Reggae",
+        "R&B", "Metal", "Country", "Blues", "Reggae", "Techno"
     ];
 
     private static readonly string[] Artists =
@@ -78,7 +78,7 @@ public class SongGenerator
         var genre = Genres[rng.Next(Genres.Length)];
         var songLikes = PickIntegerLikes(rng, likes);
 
-        var coverUrl = AlbumCoverGenerator.BuildUrl(album, seedString);
+        var coverUrl = AlbumCoverGenerator.BuildUrl(album, artist, genre, seedString);
 
         return new Song(index, index, title, artist, album, genre, songLikes, coverUrl);
     }

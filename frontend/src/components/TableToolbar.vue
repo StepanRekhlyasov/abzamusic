@@ -47,25 +47,38 @@
 
       <div class="col-12 col-sm-4">
         <q-slider
-          v-model="likes"
+          v-model="likesDraft"
           :min="0"
           :max="10"
           :step="0.1"
           label
           label-always
           color="primary"
+          @change="commitLikes"
         />
       </div>
 
       <div class="col-12 col-sm-4 text-body2">
-        Лайки: {{ likes.toFixed(1) }}
+        Лайки: {{ likesDraft.toFixed(1) }}
       </div>
     </div>
   </q-toolbar>
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { isValidSeed, randomSeed, useSongsStore } from '@/stores/songs';
+
 const { enableVirtualScroll, seed, likes } = storeToRefs(useSongsStore());
+
+const likesDraft = ref(likes.value);
+
+watch(likes, (value) => {
+  likesDraft.value = value;
+});
+
+function commitLikes(value: number) {
+  likes.value = value;
+}
 </script>

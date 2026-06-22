@@ -36,6 +36,7 @@ public class GenerateController(SongGenerator songGenerator, AlbumCoverGenerator
     [HttpGet("cover")]
     public ActionResult GetCover(
         [FromQuery] string album,
+        [FromQuery] string artist,
         [FromQuery] string seed,
         [FromQuery] string? genre = null)
     {
@@ -44,12 +45,17 @@ public class GenerateController(SongGenerator songGenerator, AlbumCoverGenerator
             return BadRequest("Album is required.");
         }
 
+        if (string.IsNullOrWhiteSpace(artist))
+        {
+            return BadRequest("Artist is required.");
+        }
+
         if (!SeedParser.TryParse(seed, out var seedValue))
         {
             return BadRequest("Seed must be a valid 64-bit alphanumeric value.");
         }
 
-        var svg = albumCoverGenerator.GenerateSvg(album, seedValue, genre);
+        var svg = albumCoverGenerator.GenerateSvg(album, artist, seedValue, genre);
         return Content(svg, "image/svg+xml");
     }
 }

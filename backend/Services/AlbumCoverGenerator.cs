@@ -1,132 +1,153 @@
-using System.Globalization;
 using System.Text;
 
 namespace backend.Services;
 
-public class AlbumCoverGenerator
+public class AlbumCoverGenerator(IWebHostEnvironment environment)
 {
-    private static readonly Dictionary<string, int> GenreHues = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Rock"] = 0,
-        ["Pop"] = 320,
-        ["Jazz"] = 210,
-        ["Hip-Hop"] = 30,
-        ["Electronic"] = 280,
-        ["Classical"] = 35,
-        ["R&B"] = 260,
-        ["Metal"] = 350,
-        ["Country"] = 25,
-        ["Blues"] = 220,
-        ["Indie"] = 170,
-        ["Reggae"] = 140,
-    };
+    private readonly Dictionary<string, string> _backgroundDataUris = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _cacheLock = new();
 
-    public static string BuildUrl(string album, string seed)
+    public static string BuildUrl(string album, string artist, string genre, string seed)
     {
-        return $"/api/generate/cover?album={Uri.EscapeDataString(album)}&seed={Uri.EscapeDataString(seed)}";
+        return string.Concat(
+            "/api/generate/cover?album=",
+            Uri.EscapeDataString(album),
+            "&artist=",
+            Uri.EscapeDataString(artist),
+            "&genre=",
+            Uri.EscapeDataString(genre),
+            "&seed=",
+            Uri.EscapeDataString(seed));
     }
 
-    public string GenerateSvg(string album, ulong seed, string? genre = null)
+    public string GenerateSvg(string album, string artist, ulong seed, string? genre = null)
     {
-        var rng = new Random(HashCode.Combine(
-            unchecked((int)(seed & uint.MaxValue)),
-            unchecked((int)(seed >> 32)),
-            StringComparer.Ordinal.GetHashCode(album)));
-
-        var baseHue = genre is not null && GenreHues.TryGetValue(genre, out var genreHue)
-            ? genreHue
-            : Math.Abs(StringComparer.Ordinal.GetHashCode(album)) % 360;
-
-        var hueShift = rng.Next(-25, 26);
-        var hue1 = (baseHue + hueShift + 360) % 360;
-        var hue2 = (hue1 + 40 + rng.Next(30, 90)) % 360;
-        var sat1 = 55 + rng.Next(25);
-        var sat2 = 45 + rng.Next(30);
-        var lit1 = 28 + rng.Next(18);
-        var lit2 = 42 + rng.Next(20);
-
-        var colorA = Hsl(hue1, sat1, lit1);
-        var colorB = Hsl(hue2, sat2, lit2);
-        var accent = Hsl((hue1 + 180) % 360, 70, 65);
-
-        var monogram = BuildMonogram(album);
-        var shapes = BuildShapes(rng, accent);
+        var backgroundDataUri = GetBackgroundDataUri(genre);
+        var albumLines = WrapLines(album, 22, 2);
+        var artistLine = Truncate(artist, 28);
+        var albumFontSize = albumLines.Count > 1 ? 13 : album.Length > 24 ? 12 : 15;
+        var albumStartY = albumLines.Count > 1 ? 138 : 148;
 
         var svg = new StringBuilder();
         svg.AppendLine("""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">""");
-        svg.AppendLine($"""  <defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="{colorA}"/><stop offset="100%" stop-color="{colorB}"/></linearGradient></defs>""");
-        svg.AppendLine("""  <rect width="200" height="200" fill="url(#bg)"/>""");
-        svg.Append(shapes);
-        svg.AppendLine($"""  <text x="100" y="112" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="rgba(255,255,255,0.92)" letter-spacing="2">{EscapeXml(monogram)}</text>""");
-        svg.AppendLine($"""  <text x="100" y="168" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="rgba(255,255,255,0.55)" letter-spacing="3">{EscapeXml(Truncate(album, 28).ToUpperInvariant())}</text>""");
+        svg.AppendLine("""  <defs>""");
+        svg.AppendLine("""    <linearGradient id="overlay" x1="0" y1="0" x2="0" y2="1">""");
+        svg.AppendLine("""      <stop offset="0%" stop-color="rgba(0,0,0,0.05)"/>""");
+        svg.AppendLine("""      <stop offset="45%" stop-color="rgba(0,0,0,0.2)"/>""");
+        svg.AppendLine("""      <stop offset="100%" stop-color="rgba(0,0,0,0.82)"/>""");
+        svg.AppendLine("""    </linearGradient>""");
+        svg.AppendLine("""  </defs>""");
+        svg.AppendLine($"""  <image href="{backgroundDataUri}" x="0" y="0" width="200" height="200" preserveAspectRatio="xMidYMid slice"/>""");
+        svg.AppendLine("""  <rect width="200" height="200" fill="url(#overlay)"/>""");
+
+        for (var i = 0; i < albumLines.Count; i++)
+        {
+            var y = albumStartY + i * (albumFontSize + 4);
+            svg.AppendLine($"""  <text x="100" y="{y}" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="{albumFontSize}" font-weight="700" fill="rgba(255,255,255,0.96)">{EscapeXml(albumLines[i])}</text>""");
+        }
+
+        svg.AppendLine($"""  <text x="100" y="178" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="500" fill="rgba(255,255,255,0.78)" letter-spacing="0.5">{EscapeXml(artistLine)}</text>""");
         svg.AppendLine("</svg>");
 
         return svg.ToString();
     }
 
-    private static string BuildMonogram(string album)
+    private string GetBackgroundDataUri(string? genre)
     {
-        var words = album.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (words.Length == 0) return "?";
-
-        if (words.Length == 1)
+        var cacheKey = genre ?? string.Empty;
+        lock (_cacheLock)
         {
-            return words[0].Length >= 2
-                ? words[0][..2].ToUpperInvariant()
-                : words[0].ToUpperInvariant();
-        }
+            if (_backgroundDataUris.TryGetValue(cacheKey, out var cached))
+            {
+                return cached;
+            }
 
-        return string.Concat(words[0][0], words[^1][0]).ToUpperInvariant();
+            var relativePath = GenreCoverAssets.GetBackgroundRelativePath(genre);
+            var absolutePath = ResolveAssetPath(relativePath);
+            if (!File.Exists(absolutePath))
+            {
+                absolutePath = ResolveAssetPath(GenreCoverAssets.GetBackgroundRelativePath("Pop"));
+            }
+
+            if (!File.Exists(absolutePath))
+            {
+                throw new FileNotFoundException($"Genre cover asset was not found: {relativePath}", absolutePath);
+            }
+
+            var bytes = File.ReadAllBytes(absolutePath);
+            var dataUri = $"data:image/png;base64,{Convert.ToBase64String(bytes)}";
+            _backgroundDataUris[cacheKey] = dataUri;
+            return dataUri;
+        }
     }
 
-    private static string BuildShapes(Random rng, string accent)
+    private string ResolveAssetPath(string relativePath)
     {
-        var sb = new StringBuilder();
-        var shapeCount = 4 + rng.Next(3);
+        var assetsRoot = !string.IsNullOrEmpty(environment.WebRootPath)
+            ? environment.WebRootPath
+            : Path.Combine(environment.ContentRootPath, "wwwroot");
 
-        for (var i = 0; i < shapeCount; i++)
+        return Path.Combine(assetsRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
+    }
+
+    private static List<string> WrapLines(string text, int maxCharsPerLine, int maxLines)
+    {
+        var normalized = text.Trim();
+        if (normalized.Length == 0)
         {
-            var opacity = 0.08 + rng.NextDouble() * 0.18;
-            var fill = accent;
+            return ["Unknown Album"];
+        }
 
-            switch (rng.Next(3))
+        if (normalized.Length <= maxCharsPerLine)
+        {
+            return [normalized];
+        }
+
+        var words = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var lines = new List<string>();
+        var current = new StringBuilder();
+
+        foreach (var word in words)
+        {
+            var candidate = current.Length == 0 ? word : $"{current} {word}";
+            if (candidate.Length > maxCharsPerLine && current.Length > 0)
             {
-                case 0:
-                {
-                    var cx = rng.Next(0, 201);
-                    var cy = rng.Next(0, 201);
-                    var r = 20 + rng.Next(70);
-                    sb.AppendLine($"""  <circle cx="{cx}" cy="{cy}" r="{r}" fill="{fill}" fill-opacity="{opacity.ToString(CultureInfo.InvariantCulture)}"/>""");
-                    break;
-                }
-                case 1:
-                {
-                    var x = rng.Next(-40, 160);
-                    var y = rng.Next(-40, 160);
-                    var w = 40 + rng.Next(100);
-                    var h = 40 + rng.Next(100);
-                    var rotate = rng.Next(0, 360);
-                    sb.AppendLine($"""  <rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{fill}" fill-opacity="{opacity.ToString(CultureInfo.InvariantCulture)}" transform="rotate({rotate} {x + w / 2} {y + h / 2})"/>""");
-                    break;
-                }
-                default:
-                {
-                    var x1 = rng.Next(0, 201);
-                    var y1 = rng.Next(0, 201);
-                    var x2 = rng.Next(0, 201);
-                    var y2 = rng.Next(0, 201);
-                    var strokeWidth = 2 + rng.Next(6);
-                    sb.AppendLine($"""  <line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{fill}" stroke-opacity="{opacity.ToString(CultureInfo.InvariantCulture)}" stroke-width="{strokeWidth}"/>""");
-                    break;
-                }
+                lines.Add(current.ToString());
+                current.Clear();
+                current.Append(word);
+            }
+            else
+            {
+                current.Clear();
+                current.Append(candidate);
+            }
+
+            if (lines.Count >= maxLines)
+            {
+                break;
             }
         }
 
-        return sb.ToString();
-    }
+        if (lines.Count < maxLines && current.Length > 0)
+        {
+            lines.Add(current.ToString());
+        }
 
-    private static string Hsl(int hue, int saturation, int lightness)
-        => $"hsl({hue},{saturation}%,{lightness}%)";
+        if (lines.Count == 0)
+        {
+            lines.Add(Truncate(normalized, maxCharsPerLine));
+        }
+
+        if (lines.Count == maxLines && string.Join(' ', words).Length > string.Join(' ', lines).Length)
+        {
+            var last = lines[^1];
+            lines[^1] = last.Length > maxCharsPerLine - 1
+                ? last[..(maxCharsPerLine - 1)] + "…"
+                : last + "…";
+        }
+
+        return lines;
+    }
 
     private static string Truncate(string value, int maxLength)
         => value.Length <= maxLength ? value : value[..(maxLength - 1)] + "…";
