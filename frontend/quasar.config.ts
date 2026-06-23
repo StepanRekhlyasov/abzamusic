@@ -102,10 +102,6 @@ export default defineConfig((ctx) => {
           target: process.env.API_PROXY_TARGET ?? 'http://localhost:8080',
           changeOrigin: true,
         },
-        '/assets': {
-          target: process.env.API_PROXY_TARGET ?? 'http://localhost:8080',
-          changeOrigin: true,
-        },
       },
     },
 
