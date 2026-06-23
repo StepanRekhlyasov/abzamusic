@@ -87,7 +87,7 @@ async function fetchSongs(params: GenerateSongsParams): Promise<SongsPageRespons
 export const useSongsStore = defineStore('songs', () => {
   const enableVirtualScroll = ref(false);
   const pageSize = ref(10);
-  const seed = ref('5Ezg7yb1S');
+  const seed = ref(randomSeed());
   const likes = ref(5.0);
   const language = ref<AppLanguage>('en');
   const loading = ref(false);
